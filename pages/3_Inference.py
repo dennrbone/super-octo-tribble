@@ -2,21 +2,37 @@ import streamlit as st
 import pandas as pd
 import pickle
 import joblib
+import json
+import umap
 from catboost import CatBoostRegressor
 
 @st.cache_resource
 def load_all():
-    # Основной scaler для всех моделей
+    # Основной scaler
     with open("models/scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
-    # Scaler для UMAP (только для ML6)
+
+    # Scaler для UMAP (повторная стандартизация после UMAP)
     try:
         with open("models/scaler_umap.pkl", "rb") as f:
             scaler_umap = pickle.load(f)
     except FileNotFoundError:
         scaler_umap = None
         st.warning("Файл scaler_umap.pkl не найден. ML6 может работать некорректно.")
-    
+
+    # Загрузка тренировочных данных для повторного обучения UMAP
+    with open("models/X_train_scaled.pkl", "rb") as f:
+        X_train_scaled = pickle.load(f)
+
+    # Загрузка параметров UMAP из JSON
+    with open("models/umap_params.json", "r") as f:
+        umap_params = json.load(f)
+
+    # Создание и обучение UMAP
+    umap_transformer = umap.UMAP(**umap_params, random_state=42, n_jobs=-1)
+    umap_transformer.fit(X_train_scaled)
+
+    # Загрузка ML-моделей
     with open("models/ml1_linear.pkl", "rb") as f:
         ml1 = pickle.load(f)
     with open("models/ml2_gb.pkl", "rb") as f:
@@ -26,13 +42,11 @@ def load_all():
     with open("models/ml5_stacking.pkl", "rb") as f:
         ml5 = pickle.load(f)
     with open("models/ml6_mlp.pkl", "rb") as f:
-        ml6 = pickle.load(f)
+        ml6 = joblib.load(f)
+
     ml3 = CatBoostRegressor()
     ml3.load_model("models/ml3_catboost.cbm")
-    
-    with open("models/umap.pkl", "rb") as f:
-        umap_transformer = joblib.load(f)
-    
+
     return scaler, scaler_umap, ml1, ml2, ml3, ml4, ml5, ml6, umap_transformer
 
 scaler, scaler_umap, ml1, ml2, ml3, ml4, ml5, ml6, umap_transformer = load_all()
