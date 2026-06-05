@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import pickle
+import joblib
 from catboost import CatBoostRegressor
 
 @st.cache_resource
@@ -30,7 +31,7 @@ def load_all():
     ml3.load_model("models/ml3_catboost.cbm")
     
     with open("models/umap.pkl", "rb") as f:
-        umap_transformer = pickle.load(f)
+        umap_transformer = joblib.load(f)
     
     return scaler, scaler_umap, ml1, ml2, ml3, ml4, ml5, ml6, umap_transformer
 
